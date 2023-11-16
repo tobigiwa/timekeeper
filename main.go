@@ -1,116 +1,193 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"math/rand"
+	"os"
+	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/timer"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/olekukonko/ts"
 )
-
-type sessionState uint
-
-const (
-	defaultTime              = time.Minute
-	timerView   sessionState = iota
-	spinnerView
-)
-
-var (
-	spinners = []spinner.Spinner{
-		spinner.Line,
-		spinner.Dot,
-		spinner.MiniDot,
-		spinner.Jump,
-		spinner.Pulse,
-		spinner.Points,
-		spinner.Globe,
-		spinner.Moon,
-		spinner.Monkey,
-	}
-
-	modelStyle = lipgloss.NewStyle().
-			Width(15).
-			Height(5).
-			Align(lipgloss.Center, lipgloss.Center).
-			BorderStyle(lipgloss.DoubleBorder())
-
-	focusedModelStyle = lipgloss.NewStyle().
-				Width(15).
-				Height(5).
-				Align(lipgloss.Center, lipgloss.Center).
-				BorderStyle(lipgloss.NormalBorder()).
-				BorderForeground(lipgloss.Color("69"))
-
-	spinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
-	helpStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-)
-
-type mainModel struct {
-	state   sessionState
-	timer   timer.Model
-	spinner spinner.Model
-	index   int
-}
-
-func newModel(timeout time.Duration) mainModel {
-	m := mainModel{state: timerView}
-	m.timer = timer.New(timeout)
-	m.spinner = spinner.New()
-	return m
-}
-
-func (m mainModel) Init() tea.Cmd {
-	return tea.Batch(m.timer.Init(), m.spinner.Tick)
-}
-
-func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+q", "q":
-			return m, tea.Quit
-
-		}
-	}
-	return m, nil
-
-}
-
-func (m mainModel) View() string {
-	var s string
-	// model := m.currentFocusedModel()
-	// if m.state == timerView {
-	// s += lipgloss.JoinHorizontal(lipgloss.Top, focusedModelStyle.Render(fmt.Sprintf("%4s", m.timer.View())), modelStyle.Render(m.spinner.View()))
-	// } else {
-	// 	s += lipgloss.JoinHorizontal(lipgloss.Top, modelStyle.Render(fmt.Sprintf("%4s", m.timer.View())), focusedModelStyle.Render(m.spinner.View()))
-
-	// }
-	// s += helpStyle.Render(fmt.Sprintf("\ntab: focus next • n: new %s • q: exit\n", model))
-	blockA := "AAA \nAAA \nAAA "
-	blockB := "BBB \nBBB \nBBB \nBBB \nBBB "
-
-	// Join 20% from the top
-	// s := lipgloss.JoinHorizontal(0.2, blockA, blockB)
-
-	// Join on the top edge
-	s = lipgloss.JoinHorizontal(lipgloss.Top, blockA, blockB)
-	return s
-}
-
-func (m mainModel) currentFocusedModel() string {
-	if m.state == timerView {
-		return "timer"
-	}
-	return "spinner"
-}
 
 func main() {
-	p := tea.NewProgram(newModel(defaultTime))
-	if _, err := p.Run(); err != nil {
+
+	settingsAndUpdate := lipgloss.JoinHorizontal(lipgloss.Bottom,
+		settingsBox.Render("Settings"), updateBox.Render("Updates"))
+
+	// combinedBox :=
+
+	sideBarOptions := lipgloss.JoinVertical(
+		lipgloss.Top,
+		activeTab.Render("Remainder System"),
+		tab.Render("Timer/Alert ⏳"),
+		tab.Render("Monitoring"),
+		tab.Render("Notes & Secrets"),
+		settingsAndUpdate,
+	)
+
+	row2 := lipgloss.JoinHorizontal(lipgloss.Top, sidebar.Render(sideBarOptions),
+		viewspace.Render())
+
+	row := lipgloss.JoinHorizontal(lipgloss.Top, firsMenubar.Render(),
+		secondMenurbar.Render("2"), thirdMenubar.Render("3"),
+	)
+
+	allView := lipgloss.JoinVertical(lipgloss.Top, row, row2)
+
+	dialog := lipgloss.Place(
+		terminalDim.Col(), terminalDim.Row(), lipgloss.Center,
+		lipgloss.Top, allView,
+		lipgloss.WithWhitespaceChars("猫咪 猫咪"),
+		lipgloss.WithWhitespaceForeground(subtle))
+
+	fmt.Println(dialog)
+	fmt.Println()
+}
+
+var (
+	h           = lipgloss.NewStyle()
+	terminalDim = getwindowSize()
+	subtle      = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
+
+	firsMenubar = lipgloss.NewStyle().
+			Width(int(float32(terminalDim.Col())*0.29)).
+			Height(3).
+			Align(lipgloss.Center, lipgloss.Center).
+			BorderStyle(lipgloss.DoubleBorder()).MarginLeft(1).MarginRight(1)
+
+	secondMenurbar = firsMenubar
+	thirdMenubar   = firsMenubar
+	sidebar        = lipgloss.NewStyle().
+			Width(int(float32(terminalDim.Col()) * 0.29)).
+			Height(int(float32(terminalDim.Row()) * 0.75)).
+			Border(lipgloss.DoubleBorder()).MarginLeft(1).MarginRight(1)
+	viewspace = lipgloss.NewStyle().
+			Width(int(float32(terminalDim.Col()) * 0.61)).
+			Height(int(float32(terminalDim.Row()) * 0.75)).
+			Border(lipgloss.DoubleBorder()).MarginLeft(1).MarginRight(1)
+
+	activeTabBorder = lipgloss.Border{
+		Top:         "-",
+		Bottom:      "-",
+		Left:        "►",
+		Right:       "│",
+		TopRight:    "◝",
+		BottomRight: "◞",
+	}
+
+	tabBorder = lipgloss.Border{
+		Top:    "─",
+		Bottom: "─",
+		Left:   " ",
+		Right:  "│",
+		// TopLeft:     "╭",
+		TopRight: "╮",
+		// BottomLeft:  "╰",
+		BottomRight: "╯",
+	}
+	settingsAndUpdateBorder = lipgloss.Border{
+		Top:    "─",
+		Bottom: "─",
+		// Left:        " ",
+		TopLeft:     "◜",
+		MiddleLeft:  "╻",
+		BottomLeft:  "◟",
+		Right:       "│",
+		TopRight:    "◝",
+		BottomRight: "◞",
+	}
+
+	highlight = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+
+	tab = lipgloss.NewStyle().
+		Border(tabBorder, true).
+		MarginTop(1).
+		MarginBottom(1).
+		BorderForeground(highlight).
+		Padding(0, 1).Faint(true)
+
+	activeTab = tab.Copy().Border(activeTabBorder, true).Blink(true).Faint(false).Underline(true)
+
+	settingsAndUpdateTab = lipgloss.NewStyle().
+				BorderStyle(lipgloss.RoundedBorder()).
+				BorderForeground(highlight).Margin(1)
+	settingsBox = settingsAndUpdateTab.Copy()
+	updateBox   = settingsAndUpdateTab.Copy()
+)
+
+func GetAsciiArt(n int) string {
+
+	if n > 1 {
+		os.Exit(1)
+	}
+
+	var (
+		colorArr  = [7]string{"\u001b[33m", "\u001b[33m", "\u001b[33m", "\u001b[31m", "\u001b[35m", "\u001b[35m", "\u001b[33m"}
+		turnoff   = "\u001b[0m\n"
+		ch        = make(chan string)
+		fileNames = [2]string{"asciiArtLogo.txt", "asciiArt.txt"}
+		container = make([]string, 0, 2)
+		count     = 0
+		size      = len(colorArr)
+	)
+
+	for _, v := range fileNames {
+		fileName := v
+
+		go func(fileName string, ch chan<- string) {
+			var (
+				buf   strings.Builder
+				bytes []byte
+				err   error
+			)
+			source := rand.NewSource(time.Now().Unix())
+			r := rand.New(source)
+
+			if bytes, err = os.ReadFile(fileName); err != nil {
+				ch <- err.Error()
+				return
+			}
+
+			strSlice := strings.Split(strings.TrimSpace(string(bytes)), "\n")
+			for _, art := range strSlice {
+				buf.WriteString(fmt.Sprintf("%s %s %s", colorArr[r.Intn(size)], art, turnoff))
+			}
+			ch <- buf.String()
+
+		}(fileName, ch)
+	}
+
+	for v := range ch {
+		count++
+		container = append(container /*strings.TrimSpace(v)*/, v)
+		if count >= 2 {
+			close(ch)
+			fmt.Println("channel closed successfully")
+			break
+		}
+	}
+
+	// fmt.Print(container[0])
+	// fmt.Print(container[1])
+
+	// return fmt.Sprintf("%s%s", container[0], container[1])
+	return container[n]
+
+}
+
+func getwindowSize() ts.Size {
+	var (
+		size ts.Size
+		err  error
+	)
+
+	if size, err = ts.GetSize(); err != nil {
 		log.Fatal(err)
 	}
+
+	return size
+
 }
