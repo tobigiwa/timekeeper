@@ -1,58 +1,59 @@
 package main
 
 import (
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
 )
 
 func (m MainModel) View() string {
 
-	MenuBar := lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).
-		Width(20).Height(3)
-	c := MenuBar.Copy().Width(100).Height(2)
-	d := MenuBar.Copy().Height(13).Width(70)
-
-	// doc := strings.Builder{}
-	// {
-	// 	var renderedTabs []string
-
-	// 	for i, t := range m.Tabs {
-	// 		var style lipgloss.Style
-	// 		isFirst, isLast, isActive := i == 0, i == len(m.Tabs)-1, i == m.activeTab
-	// 		if isActive {
-	// 			style = activeTabStyle.Copy()
-	// 		} else {
-	// 			style = inactiveTabStyle.Copy()
-	// 		}
-	// 		border, _, _, _, _ := style.GetBorder()
-	// 		if isFirst && isActive {
-	// 			border.BottomLeft = "│"
-	// 		} else if isFirst && !isActive {
-	// 			border.BottomLeft = "├"
-	// 		} else if isLast && isActive {
-	// 			border.BottomRight = "│"
-	// 		} else if isLast && !isActive {
-	// 			border.BottomRight = "┤"
-	// 		}
-	// 		style = style.Border(border)
-	// 		renderedTabs = append(renderedTabs, style.Render(t))
-	// 	}
-
-	// 	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
-	// 	doc.WriteString(row)
-	// 	doc.WriteString("\n")
-	// 	doc.WriteString(windowStyle.Width(lipgloss.Width(row) - windowStyle.GetHorizontalFrameSize()).Render(m.TabContent[m.activeTab]))
-	// }
-
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			MenuBar.Render(m.List.View()),
-			d.Render(m.Tabs.View()),
+			lipgloss.Center,
+			m.menuBar(),
+			m.viewBar(),
 		),
 
-		c.String(),
+		C.String(),
 	)
+
+}
+
+func (m MainModel) menuBar() string {
+	menuBar := lipgloss.NewStyle().
+		Border(lipgloss.DoubleBorder()).
+		Width(19)
+
+	return menuBar.Render(m.list.View())
+}
+
+func (m MainModel) viewBar() string {
+
+	// currectView := m.views[m.state]
+	// currectView.Style = lipgloss.NewStyle().
+	// 	Width(80).
+	// 	Height(30).Border(lipgloss.DoubleBorder())
+
+	m.viewports = viewport.New(80, 25)
+	m.viewports.Style = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		Foreground(lipgloss.Color("170"))
+
+	return m.viewports.View()
+
+}
+
+func (m MainModel) viewportContent(width int) string {
+	var builder strings.Builder
+	for i := 0; i <= width; i++ {
+		builder.WriteString(strings.Repeat("---\n", width))
+	}
+	return wordwrap.String(builder.String(), width)
 }
 
 type status int
@@ -62,6 +63,13 @@ const (
 	alert
 	monitor
 	timeLog
-
 )
 
+func renderTextArea() string {
+	x := textarea.New()
+	x.SetWidth(40)
+	x.Placeholder = "jing yang"
+	x.Cursor.Blink = true
+	x.Focus()
+	return x.View()
+}

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"timekeeper/tab"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -52,8 +52,11 @@ func (i itemDelegateMenuOpt) Render(w io.Writer, m list.Model, index int, listIt
 }
 
 type MainModel struct {
-	List  list.Model
-	Tabs  tab.Tabmodel
-	state status
-	focus bool
+	list        list.Model
+	viewports   viewport.Model
+	focusOnList bool
+	state       status
+	focus       bool
+	tHeight     int
+	tWidth      int
 }
